@@ -33,6 +33,19 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return decoder
     }
 
+    var fetchData: FetchData? {
+        get {
+            if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
+                return try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
+            }
+            return nil
+        }
+        set {
+            let value = try? fetchDataEncoder.encode(newValue)
+            UserDefaults.standard.set(value, forKey: "fetchData")
+        }
+    }
+
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
@@ -70,32 +83,38 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("\(Date()), \(#function)")
-        if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
-            let fetchData = try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
-            if let lastFetchDate = fetchData?.lastFetchDate {
-                let diff = Date().timeIntervalSince(lastFetchDate)
+        if !checkFetchNeed(date: Date()) {
+            completionHandler(.noData)
+            return
+        }
+        requestData(completionHandler: completionHandler)
+    }
+
+    func checkFetchNeed(date: Date) -> Bool {
+        if let fetchData = self.fetchData {
+            // Skip if 24h have not passed since the last fetch
+            if let lastFetchDate = fetchData.lastFetchDate {
+                let diff = date.timeIntervalSince(lastFetchDate)
                 if 0 < diff && diff < 24 * 60 * 60 {
                     print("\(Date()), \(#function), lastFetchDate=\(lastFetchDate), diff=\(diff)")
-                    completionHandler(.noData)
-                    return
+                    return false
                 }
             }
-            if let lastFetchDate = fetchData?.lastFetchFailureDate {
-                let diff = Date().timeIntervalSince(lastFetchDate)
+            // Skip if 5min have not passed since the last fetch failure
+            if let lastFetchDate = fetchData.lastFetchFailureDate {
+                let diff = date.timeIntervalSince(lastFetchDate)
                 if 0 < diff && diff < 5 * 60 {
                     print("\(Date()), \(#function), lastFetchFailureDate=\(lastFetchDate), diff=\(diff)")
-                    completionHandler(.noData)
-                    return
+                    return false
                 }
             }
         }
-        requestData(completionHandler: completionHandler)
+        return true
     }
 
     func requestData(completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
         let decoder = sampleDecoder
-        let encoder = fetchDataEncoder
         networkManager.get(url) { (result) in
             print("\(Date()), \(#function), \(result)")
             let fetchResult: UIBackgroundFetchResult
@@ -108,25 +127,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     fetchData.sample = sample
                     fetchData.lastModified = lastModified
                     fetchData.lastFetchDate = Date()
-                    let value = try? encoder.encode(fetchData)
-                    UserDefaults.standard.set(value, forKey: "fetchData")
+                    self.fetchData = fetchData
                     print("\(#function). fetchData=\(fetchData)")
                     fetchResult = .newData
                 } else {
                     var fetchData = FetchData()
                     fetchData.lastFetchFailureDate = Date()
-                    let value = try? encoder.encode(fetchData)
-                    UserDefaults.standard.set(value, forKey: "fetchData")
+                    self.fetchData = fetchData
                     print("\(#function), parse failure. fetchData=\(fetchData)")
-                    fetchResult = .noData
+                    fetchResult = .failed
                 }
             case let .failure(error):
                 var fetchData = FetchData()
                 fetchData.lastFetchFailureDate = Date()
-                let value = try? encoder.encode(fetchData)
-                UserDefaults.standard.set(value, forKey: "fetchData")
+                self.fetchData = fetchData
                 print("\(#function), download failure. error=\(error), fetchData=\(fetchData)")
-                fetchResult = .noData
+                fetchResult = .failed
             }
             completionHandler(fetchResult)
         }
