@@ -13,7 +13,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
     let networkManager = BackgroundNetworkManager(configuration: URLSessionConfiguration.default)
-
+    var sampleDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMddHHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 9 * 60 * 60)
+        decoder.dateDecodingStrategy = .formatted(formatter)
+        return decoder
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -49,12 +57,22 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         print("\(Date()), \(#function)")
         let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
+        let decoder = sampleDecoder
         networkManager.get(url) { (result) in
             print("\(Date()), \(#function), \(result)")
+            switch result {
+            case let .success((data, _)):
+                if let sample = try? decoder.decode(Sample.self, from: data) {
+                    print("\(#function), fetch success. \(sample)")
+                } else {
+                    print("\(#function), parse failure.")
+                }
+            case let .failure(error):
+                print("\(#function), download failure. error=\(error)")
+            }
             completionHandler(.noData)
         }
     }
-
 
 }
 

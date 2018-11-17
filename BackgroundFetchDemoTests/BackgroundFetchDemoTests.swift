@@ -63,4 +63,17 @@ class BackgroundFetchDemoTests: XCTestCase {
         wait(for: [exp], timeout: 10.0)
     }
 
+    func test_parseSample() {
+        let fileUrl = Bundle(for: type(of: self)).url(forResource: "sample01", withExtension: "json")!
+        let data = try! Data(contentsOf: fileUrl)
+        let decoder = JSONDecoder()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMddHHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 9 * 60 * 60)
+        decoder.dateDecodingStrategy = .formatted(formatter)
+        let sample = try? decoder.decode(Sample.self, from: data)
+        XCTAssertNotNil(sample, "decode failure.")
+    }
+
 }
