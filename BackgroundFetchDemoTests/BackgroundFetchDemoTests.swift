@@ -31,4 +31,36 @@ class BackgroundFetchDemoTests: XCTestCase {
         }
     }
 
+    func test_backgroundNetworkManager_success() {
+        let exp = expectation(description: #function)
+        let manager = BackgroundNetworkManager(configuration: URLSessionConfiguration.default)
+        let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
+        manager.get(url) { (result) in
+            print("\(#function), \(result)")
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 10.0)
+    }
+
+    func test_backgroundNetworkManager_cancel() {
+        let exp = expectation(description: #function)
+        let manager = BackgroundNetworkManager(configuration: URLSessionConfiguration.default)
+        let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
+        let task = manager.get(url) { (result) in
+            print("\(#function), \(result)")
+            switch result {
+            case let .failure(error as NSError):
+                XCTAssertEqual(error.domain, NSURLErrorDomain)
+                XCTAssertEqual(error.code, NSURLErrorCancelled)
+            case .success:
+                XCTFail("not cancelled.")
+            }
+            exp.fulfill()
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            task.cancel()
+        }
+        wait(for: [exp], timeout: 10.0)
+    }
+
 }

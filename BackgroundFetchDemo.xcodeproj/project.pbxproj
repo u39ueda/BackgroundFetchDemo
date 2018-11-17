@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0B438E12219FB9C400F47890 /* BackgroundNetworkManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B438E11219FB9C400F47890 /* BackgroundNetworkManager.swift */; };
+		0B438E14219FBC1700F47890 /* Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B438E13219FBC1700F47890 /* Result.swift */; };
 		0B4FC1F1219FAC0700B90D3C /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4FC1F0219FAC0700B90D3C /* AppDelegate.swift */; };
 		0B4FC1F3219FAC0700B90D3C /* ViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4FC1F2219FAC0700B90D3C /* ViewController.swift */; };
 		0B4FC1F6219FAC0700B90D3C /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0B4FC1F4219FAC0700B90D3C /* Main.storyboard */; };
@@ -34,6 +36,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		0B438E11219FB9C400F47890 /* BackgroundNetworkManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundNetworkManager.swift; sourceTree = "<group>"; };
+		0B438E13219FBC1700F47890 /* Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Result.swift; sourceTree = "<group>"; };
 		0B4FC1ED219FAC0700B90D3C /* BackgroundFetchDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BackgroundFetchDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B4FC1F0219FAC0700B90D3C /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		0B4FC1F2219FAC0700B90D3C /* ViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewController.swift; sourceTree = "<group>"; };
@@ -103,6 +107,8 @@
 				0B4FC1F7219FAC0800B90D3C /* Assets.xcassets */,
 				0B4FC1F9219FAC0800B90D3C /* LaunchScreen.storyboard */,
 				0B4FC1FC219FAC0800B90D3C /* Info.plist */,
+				0B438E11219FB9C400F47890 /* BackgroundNetworkManager.swift */,
+				0B438E13219FBC1700F47890 /* Result.swift */,
 			);
 			path = BackgroundFetchDemo;
 			sourceTree = "<group>";
@@ -262,6 +268,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				0B4FC1F3219FAC0700B90D3C /* ViewController.swift in Sources */,
+				0B438E12219FB9C400F47890 /* BackgroundNetworkManager.swift in Sources */,
+				0B438E14219FBC1700F47890 /* Result.swift in Sources */,
 				0B4FC1F1219FAC0700B90D3C /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

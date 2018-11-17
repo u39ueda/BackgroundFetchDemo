@@ -12,12 +12,14 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    let networkManager = BackgroundNetworkManager(configuration: URLSessionConfiguration.default)
 
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
         application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+        print("\(#function), \(launchOptions?.description ?? "(nil)")")
 
         return true
     }
@@ -45,8 +47,12 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        print("\(#function)")
-        completionHandler(.noData)
+        print("\(Date()), \(#function)")
+        let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
+        networkManager.get(url) { (result) in
+            print("\(Date()), \(#function), \(result)")
+            completionHandler(.noData)
+        }
     }
 
 
