@@ -76,4 +76,17 @@ class BackgroundFetchDemoTests: XCTestCase {
         XCTAssertNotNil(sample, "decode failure.")
     }
 
+    func test_encodeFetchData() {
+        var data = FetchData()
+        data.lastModified = "Sat, 17 Nov 2018 02:43:26 GMT"
+        data.sample = Sample(data: [SampleData(date: Date(), title: "title")])
+        data.lastFetchDate = Date()
+        data.lastFetchFailureDate = Date()
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        let rawData = try? encoder.encode(data)
+        XCTAssertNotNil(rawData, "decode failure.")
+        print("\(rawData.flatMap { String(data: $0, encoding: .utf8) } ?? "nil")")
+    }
+
 }

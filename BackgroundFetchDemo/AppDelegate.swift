@@ -22,12 +22,26 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         decoder.dateDecodingStrategy = .formatted(formatter)
         return decoder
     }
+    var fetchDataEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+    var fetchDataDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
         application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
         print("\(#function), \(launchOptions?.description ?? "(nil)")")
+        if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
+            let fetchData = try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
+            print("\(#function), \(fetchData)")
+        }
 
         return true
     }
@@ -58,17 +72,34 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         print("\(Date()), \(#function)")
         let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
         let decoder = sampleDecoder
+        let encoder = fetchDataEncoder
         networkManager.get(url) { (result) in
             print("\(Date()), \(#function), \(result)")
             switch result {
-            case let .success((data, _)):
-                if let sample = try? decoder.decode(Sample.self, from: data) {
-                    print("\(#function), fetch success. \(sample)")
+            case let .success((data, res)):
+                if let sample = try? decoder.decode(Sample.self, from: data), let res = res as? HTTPURLResponse {
+                    let lastModified = res.allHeaderFields["Last-Modified"] as? String ?? ""
+                    print("\(#function), fetch success. \(sample), Last-Modified=\(lastModified)")
+                    var fetchData = FetchData()
+                    fetchData.sample = sample
+                    fetchData.lastModified = lastModified
+                    fetchData.lastFetchDate = Date()
+                    let value = try? encoder.encode(fetchData)
+                    UserDefaults.standard.set(value, forKey: "fetchData")
+                    print("\(#function). fetchData=\(fetchData)")
                 } else {
-                    print("\(#function), parse failure.")
+                    var fetchData = FetchData()
+                    fetchData.lastFetchFailureDate = Date()
+                    let value = try? encoder.encode(fetchData)
+                    UserDefaults.standard.set(value, forKey: "fetchData")
+                    print("\(#function), parse failure. fetchData=\(fetchData)")
                 }
             case let .failure(error):
-                print("\(#function), download failure. error=\(error)")
+                var fetchData = FetchData()
+                fetchData.lastFetchFailureDate = Date()
+                let value = try? encoder.encode(fetchData)
+                UserDefaults.standard.set(value, forKey: "fetchData")
+                print("\(#function), download failure. error=\(error), fetchData=\(fetchData)")
             }
             completionHandler(.noData)
         }
