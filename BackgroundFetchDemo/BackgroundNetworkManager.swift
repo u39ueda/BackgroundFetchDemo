@@ -8,7 +8,13 @@
 
 import Foundation
 
-class BackgroundNetworkTask: Equatable {
+protocol BackgroundTask {
+    var task: URLSessionTask { get }
+    func cancel()
+    func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?)
+}
+
+class BackgroundDataTask: Equatable, BackgroundTask {
     let task: URLSessionTask
     var completionHandler: ((Result<(Data, URLResponse)>) -> Void)?
     var error: Error?
@@ -20,12 +26,9 @@ class BackgroundNetworkTask: Equatable {
     func cancel() {
         task.cancel()
     }
-    public static func == (lhs: BackgroundNetworkTask, rhs: BackgroundNetworkTask) -> Bool {
+    public static func == (lhs: BackgroundDataTask, rhs: BackgroundDataTask) -> Bool {
         return lhs.task.taskIdentifier == rhs.task.taskIdentifier
     }
-}
-
-extension BackgroundNetworkTask {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         print("\(#function), error=\(String(describing: error)).")
         self.error = error
@@ -37,6 +40,9 @@ extension BackgroundNetworkTask {
             fatalError("both error and response are nil.")
         }
     }
+}
+
+extension BackgroundDataTask {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         print("\(#function), response=\(response).")
         self.response = response
@@ -71,20 +77,20 @@ class BackgroundNetworkManager {
     }
 
     @discardableResult
-    func get(_ url: URL, completion: @escaping (Result<(Data, URLResponse)>) -> Void) -> BackgroundNetworkTask {
+    func get(_ url: URL, completion: @escaping (Result<(Data, URLResponse)>) -> Void) -> BackgroundDataTask {
         let task = session.dataTask(with: url)
-        let networkTask = BackgroundNetworkTask(task: task)
-        networkTask.completionHandler = completion
-        trampoline.taskTable[task.taskIdentifier] = networkTask
+        let dataTask = BackgroundDataTask(task: task)
+        dataTask.completionHandler = completion
+        trampoline.taskTable[task.taskIdentifier] = dataTask
 
         task.resume()
 
-        return networkTask
+        return dataTask
     }
 }
 
 private class BackgroundNetworkManagerTrampoline: NSObject, URLSessionDelegate {
-    var taskTable = [Int: BackgroundNetworkTask]()
+    var taskTable = [Int: BackgroundTask]()
 }
 
 extension BackgroundNetworkManagerTrampoline: URLSessionDataDelegate {
@@ -96,14 +102,14 @@ extension BackgroundNetworkManagerTrampoline: URLSessionDataDelegate {
         networkTask.urlSession(session, task: task, didCompleteWithError: error)
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        guard let networkTask = taskTable[dataTask.taskIdentifier] else {
+        guard let networkTask = taskTable[dataTask.taskIdentifier] as? BackgroundDataTask else {
             print("\(#function), task not found.")
             return
         }
         networkTask.urlSession(session, dataTask: dataTask, didReceive: response, completionHandler: completionHandler)
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        guard let networkTask = taskTable[dataTask.taskIdentifier] else {
+        guard let networkTask = taskTable[dataTask.taskIdentifier] as? BackgroundDataTask else {
             print("\(#function), task not found.")
             return
         }
