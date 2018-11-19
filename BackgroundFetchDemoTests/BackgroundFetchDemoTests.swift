@@ -63,6 +63,17 @@ class BackgroundFetchDemoTests: XCTestCase {
         wait(for: [exp], timeout: 10.0)
     }
 
+    func test_backgroundNetworkManager_download_success() {
+        let exp = expectation(description: #function)
+        let manager = BackgroundNetworkManager(configuration: URLSessionConfiguration.background(withIdentifier: "\(#function)"))
+        let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
+        manager.download(url) { (result) in
+            print("\(#function), \(result)")
+            exp.fulfill()
+        }
+        wait(for: [exp], timeout: 10.0)
+    }
+
     func test_parseSample() {
         let fileUrl = Bundle(for: type(of: self)).url(forResource: "sample01", withExtension: "json")!
         let data = try! Data(contentsOf: fileUrl)
