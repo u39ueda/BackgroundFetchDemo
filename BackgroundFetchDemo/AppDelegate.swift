@@ -7,6 +7,40 @@
 //
 
 import UIKit
+import XCGLogger
+
+let log: XCGLogger = {
+    // Create a logger object with no destinations
+    let log = XCGLogger(identifier: "logger", includeDefaultDestinations: true)
+
+    // Create a file log destination
+    let formatter = DateFormatter()
+    formatter.locale = Locale(identifier: "en_US_POSIX")
+    formatter.dateFormat = "yyyyMMdd'-'HHmmss"
+    let docsDirURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+    let logFileURL = docsDirURL.appendingPathComponent(formatter.string(from: Date()) + ".txt")
+    let fileDestination = FileDestination(writeToFile: logFileURL.path, identifier: "logger.fileDestination")
+
+    // Optionally set some configuration options
+    fileDestination.outputLevel = .debug
+    fileDestination.showLogIdentifier = false
+    fileDestination.showFunctionName = true
+    fileDestination.showThreadName = true
+    fileDestination.showLevel = true
+    fileDestination.showFileName = true
+    fileDestination.showLineNumber = true
+    fileDestination.showDate = true
+
+    // Process this destination in the background
+    fileDestination.logQueue = XCGLogger.logQueue
+
+    // Add the destination to the logger
+    log.add(destination: fileDestination)
+
+    // Add basic app info, version info etc, to the start of the logs
+    log.logAppDetails()
+    return log
+}()
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -50,10 +84,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Override point for customization after application launch.
 
         application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
-        print("\(#function), \(launchOptions?.description ?? "(nil)")")
+        log.debug("\(launchOptions?.description ?? "(nil)")")
         if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
             let fetchData = try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
-            print("\(#function), \(fetchData)")
+            log.debug("\(fetchData)")
         }
 
         return true
@@ -82,7 +116,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        print("\(Date()), \(#function)")
+        log.debug("")
         if !checkFetchNeed(date: Date()) {
             completionHandler(.noData)
             return
@@ -96,7 +130,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             if let lastFetchDate = fetchData.lastFetchDate {
                 let diff = date.timeIntervalSince(lastFetchDate)
                 if 0 < diff && diff < 24 * 60 * 60 {
-                    print("\(Date()), \(#function), lastFetchDate=\(lastFetchDate), diff=\(diff)")
+                    log.debug("lastFetchDate=\(lastFetchDate), diff=\(diff)")
                     return false
                 }
             }
@@ -104,7 +138,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
             if let lastFetchDate = fetchData.lastFetchFailureDate {
                 let diff = date.timeIntervalSince(lastFetchDate)
                 if 0 < diff && diff < 5 * 60 {
-                    print("\(Date()), \(#function), lastFetchFailureDate=\(lastFetchDate), diff=\(diff)")
+                    log.debug("lastFetchFailureDate=\(lastFetchDate), diff=\(diff)")
                     return false
                 }
             }
@@ -116,32 +150,32 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
         let decoder = sampleDecoder
         networkManager.get(url) { (result) in
-            print("\(Date()), \(#function), \(result)")
+            log.debug("\(result)")
             let fetchResult: UIBackgroundFetchResult
             switch result {
             case let .success((data, res)):
                 if let sample = try? decoder.decode(Sample.self, from: data), let res = res as? HTTPURLResponse {
                     let lastModified = res.allHeaderFields["Last-Modified"] as? String ?? ""
-                    print("\(#function), fetch success. \(sample), Last-Modified=\(lastModified)")
+                    log.debug("fetch success. \(sample), Last-Modified=\(lastModified)")
                     var fetchData = FetchData()
                     fetchData.sample = sample
                     fetchData.lastModified = lastModified
                     fetchData.lastFetchDate = Date()
                     self.fetchData = fetchData
-                    print("\(#function). fetchData=\(fetchData)")
+                    log.debug("fetchData=\(fetchData)")
                     fetchResult = .newData
                 } else {
                     var fetchData = FetchData()
                     fetchData.lastFetchFailureDate = Date()
                     self.fetchData = fetchData
-                    print("\(#function), parse failure. fetchData=\(fetchData)")
+                    log.debug("parse failure. fetchData=\(fetchData)")
                     fetchResult = .failed
                 }
             case let .failure(error):
                 var fetchData = FetchData()
                 fetchData.lastFetchFailureDate = Date()
                 self.fetchData = fetchData
-                print("\(#function), download failure. error=\(error), fetchData=\(fetchData)")
+                log.debug("download failure. error=\(error), fetchData=\(fetchData)")
                 fetchResult = .failed
             }
             completionHandler(fetchResult)

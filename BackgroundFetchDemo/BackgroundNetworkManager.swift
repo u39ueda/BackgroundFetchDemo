@@ -30,7 +30,7 @@ class BackgroundDataTask: Equatable, BackgroundTask {
         return lhs.task.taskIdentifier == rhs.task.taskIdentifier
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        print("\(#function), error=\(String(describing: error)).")
+        log.debug("error=\(String(describing: error)).")
         self.error = error
         if let error = error {
             completionHandler?(.failure(error))
@@ -44,7 +44,7 @@ class BackgroundDataTask: Equatable, BackgroundTask {
 
 extension BackgroundDataTask {
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
-        print("\(#function), response=\(response).")
+        log.debug("response=\(response).")
         self.response = response
         if let contentLength = contentLength(response) {
             self.data = Data(capacity: contentLength)
@@ -55,7 +55,7 @@ extension BackgroundDataTask {
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         precondition(self.data != nil)
-        print("\(#function), data=\(data).")
+        log.debug("data=\(data).")
         self.data?.append(data)
     }
     private func contentLength(_ response: URLResponse) -> Int? {
@@ -96,7 +96,7 @@ class BackgroundDownloadTask: Equatable, BackgroundTask {
         return lhs.task.taskIdentifier == rhs.task.taskIdentifier
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        print("\(#function), error=\(String(describing: error)).")
+        log.debug("error=\(String(describing: error)).")
         self.error = error
         if let error = error {
             completionHandler?(.failure(error))
@@ -110,7 +110,7 @@ class BackgroundDownloadTask: Equatable, BackgroundTask {
 
 extension BackgroundDownloadTask {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
-        print("\(#function), location=\(location), response\(String(describing: downloadTask.response)).")
+        log.debug("location=\(location), response\(String(describing: downloadTask.response)).")
         self.tempFileUrl = location
         self.response = downloadTask.response
     }
@@ -155,21 +155,21 @@ private class BackgroundNetworkManagerTrampoline: NSObject, URLSessionDelegate {
 extension BackgroundNetworkManagerTrampoline: URLSessionDataDelegate {
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         guard let networkTask = taskTable[task.taskIdentifier] else {
-            print("\(#function), task not found.")
+            log.debug("task not found.")
             return
         }
         networkTask.urlSession(session, task: task, didCompleteWithError: error)
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive response: URLResponse, completionHandler: @escaping (URLSession.ResponseDisposition) -> Void) {
         guard let networkTask = taskTable[dataTask.taskIdentifier] as? BackgroundDataTask else {
-            print("\(#function), task not found.")
+            log.debug("task not found.")
             return
         }
         networkTask.urlSession(session, dataTask: dataTask, didReceive: response, completionHandler: completionHandler)
     }
     func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
         guard let networkTask = taskTable[dataTask.taskIdentifier] as? BackgroundDataTask else {
-            print("\(#function), task not found.")
+            log.debug("task not found.")
             return
         }
         networkTask.urlSession(session, dataTask: dataTask, didReceive: data)
@@ -179,7 +179,7 @@ extension BackgroundNetworkManagerTrampoline: URLSessionDataDelegate {
 extension BackgroundNetworkManagerTrampoline: URLSessionDownloadDelegate {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         guard let networkTask = taskTable[downloadTask.taskIdentifier] as? BackgroundDownloadTask else {
-            print("\(#function), task not found.")
+            log.debug("task not found.")
             return
         }
         networkTask.urlSession(session, downloadTask: downloadTask, didFinishDownloadingTo: location)
