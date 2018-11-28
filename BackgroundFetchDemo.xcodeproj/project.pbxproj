@@ -19,6 +19,8 @@
 		0B4FC1FB219FAC0800B90D3C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0B4FC1F9219FAC0800B90D3C /* LaunchScreen.storyboard */; };
 		0B4FC206219FAC0800B90D3C /* BackgroundFetchDemoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4FC205219FAC0800B90D3C /* BackgroundFetchDemoTests.swift */; };
 		0B4FC211219FAC0800B90D3C /* BackgroundFetchDemoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4FC210219FAC0800B90D3C /* BackgroundFetchDemoUITests.swift */; };
+		0B84739F21AEF19D000E548C /* ObjcExceptionBridging.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B84739D21AEF19D000E548C /* ObjcExceptionBridging.framework */; };
+		0B8473A021AEF19D000E548C /* XCGLogger.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B84739E21AEF19D000E548C /* XCGLogger.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -57,6 +59,8 @@
 		0B4FC20C219FAC0800B90D3C /* BackgroundFetchDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BackgroundFetchDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B4FC210219FAC0800B90D3C /* BackgroundFetchDemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundFetchDemoUITests.swift; sourceTree = "<group>"; };
 		0B4FC212219FAC0800B90D3C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0B84739D21AEF19D000E548C /* ObjcExceptionBridging.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ObjcExceptionBridging.framework; path = Carthage/Build/iOS/ObjcExceptionBridging.framework; sourceTree = "<group>"; };
+		0B84739E21AEF19D000E548C /* XCGLogger.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCGLogger.framework; path = Carthage/Build/iOS/XCGLogger.framework; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -64,6 +68,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0B84739F21AEF19D000E548C /* ObjcExceptionBridging.framework in Frameworks */,
+				0B8473A021AEF19D000E548C /* XCGLogger.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -91,6 +97,7 @@
 				0B4FC204219FAC0800B90D3C /* BackgroundFetchDemoTests */,
 				0B4FC20F219FAC0800B90D3C /* BackgroundFetchDemoUITests */,
 				0B4FC1EE219FAC0700B90D3C /* Products */,
+				0B84739C21AEF19D000E548C /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -140,6 +147,15 @@
 			path = BackgroundFetchDemoUITests;
 			sourceTree = "<group>";
 		};
+		0B84739C21AEF19D000E548C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				0B84739D21AEF19D000E548C /* ObjcExceptionBridging.framework */,
+				0B84739E21AEF19D000E548C /* XCGLogger.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -150,6 +166,7 @@
 				0B4FC1E9219FAC0700B90D3C /* Sources */,
 				0B4FC1EA219FAC0700B90D3C /* Frameworks */,
 				0B4FC1EB219FAC0700B90D3C /* Resources */,
+				0B8473A121AEF2E3000E548C /* Run Script - Carthage */,
 			);
 			buildRules = (
 			);
@@ -271,6 +288,31 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		0B8473A121AEF2E3000E548C /* Run Script - Carthage */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Carthage/Build/iOS/XCGLogger.framework",
+				"$(SRCROOT)/Carthage/Build/iOS/ObjcExceptionBridging.framework",
+			);
+			name = "Run Script - Carthage";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/XCGLogger.framework",
+				"$(BUILT_PRODUCTS_DIR)/$(FRAMEWORKS_FOLDER_PATH)/ObjcExceptionBridging.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "/usr/local/bin/carthage copy-frameworks\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		0B4FC1E9219FAC0700B90D3C /* Sources */ = {
@@ -458,6 +500,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
+				);
 				INFOPLIST_FILE = BackgroundFetchDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -475,6 +521,10 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_STYLE = Automatic;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Carthage/Build/iOS",
+				);
 				INFOPLIST_FILE = BackgroundFetchDemo/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
