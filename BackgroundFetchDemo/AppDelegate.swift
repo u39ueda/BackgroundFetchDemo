@@ -12,10 +12,50 @@ import UIKit
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+    let networkManager = BackgroundNetworkManager(configuration: URLSessionConfiguration.default)
+    var sampleDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMddHHmmss"
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = TimeZone(secondsFromGMT: 9 * 60 * 60)
+        decoder.dateDecodingStrategy = .formatted(formatter)
+        return decoder
+    }
+    var fetchDataEncoder: JSONEncoder {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        return encoder
+    }
+    var fetchDataDecoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
 
+    var fetchData: FetchData? {
+        get {
+            if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
+                return try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
+            }
+            return nil
+        }
+        set {
+            let value = try? fetchDataEncoder.encode(newValue)
+            UserDefaults.standard.set(value, forKey: "fetchData")
+        }
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
+        print("\(#function), \(launchOptions?.description ?? "(nil)")")
+        if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
+            let fetchData = try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
+            print("\(#function), \(fetchData)")
+        }
+
         return true
     }
 
@@ -41,6 +81,72 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Called when the application is about to terminate. Save data if appropriate. See also applicationDidEnterBackground:.
     }
 
+    func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        print("\(Date()), \(#function)")
+        if !checkFetchNeed(date: Date()) {
+            completionHandler(.noData)
+            return
+        }
+        requestData(completionHandler: completionHandler)
+    }
+
+    func checkFetchNeed(date: Date) -> Bool {
+        if let fetchData = self.fetchData {
+            // Skip if 24h have not passed since the last fetch
+            if let lastFetchDate = fetchData.lastFetchDate {
+                let diff = date.timeIntervalSince(lastFetchDate)
+                if 0 < diff && diff < 24 * 60 * 60 {
+                    print("\(Date()), \(#function), lastFetchDate=\(lastFetchDate), diff=\(diff)")
+                    return false
+                }
+            }
+            // Skip if 5min have not passed since the last fetch failure
+            if let lastFetchDate = fetchData.lastFetchFailureDate {
+                let diff = date.timeIntervalSince(lastFetchDate)
+                if 0 < diff && diff < 5 * 60 {
+                    print("\(Date()), \(#function), lastFetchFailureDate=\(lastFetchDate), diff=\(diff)")
+                    return false
+                }
+            }
+        }
+        return true
+    }
+
+    func requestData(completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
+        let decoder = sampleDecoder
+        networkManager.get(url) { (result) in
+            print("\(Date()), \(#function), \(result)")
+            let fetchResult: UIBackgroundFetchResult
+            switch result {
+            case let .success((data, res)):
+                if let sample = try? decoder.decode(Sample.self, from: data), let res = res as? HTTPURLResponse {
+                    let lastModified = res.allHeaderFields["Last-Modified"] as? String ?? ""
+                    print("\(#function), fetch success. \(sample), Last-Modified=\(lastModified)")
+                    var fetchData = FetchData()
+                    fetchData.sample = sample
+                    fetchData.lastModified = lastModified
+                    fetchData.lastFetchDate = Date()
+                    self.fetchData = fetchData
+                    print("\(#function). fetchData=\(fetchData)")
+                    fetchResult = .newData
+                } else {
+                    var fetchData = FetchData()
+                    fetchData.lastFetchFailureDate = Date()
+                    self.fetchData = fetchData
+                    print("\(#function), parse failure. fetchData=\(fetchData)")
+                    fetchResult = .failed
+                }
+            case let .failure(error):
+                var fetchData = FetchData()
+                fetchData.lastFetchFailureDate = Date()
+                self.fetchData = fetchData
+                print("\(#function), download failure. error=\(error), fetchData=\(fetchData)")
+                fetchResult = .failed
+            }
+            completionHandler(fetchResult)
+        }
+    }
 
 }
 
