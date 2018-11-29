@@ -169,15 +169,25 @@ class BackgroundNetworkManager {
 
     func handleEventsForBackgroundURLSession(completionHandler: @escaping () -> Void) {
         log.info()
-        completionHandler()
+        trampoline.handleEventsForBackgroundURLSessionCompletionHandler = completionHandler
+
+        session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) in
+            log.debug("getTasks complete\ndata=\(dataTasks)\nupload=\(uploadTasks)\ndownload=\(downloadTasks)")
+            downloadTasks.forEach { (task) in
+                let downloadTask = BackgroundDownloadTask(task: task)
+                self.trampoline.taskTable[task.taskIdentifier] = downloadTask
+            }
+        }
     }
 }
 
 private class BackgroundNetworkManagerTrampoline: NSObject, URLSessionDelegate {
     var taskTable = [Int: BackgroundTask]()
+    var handleEventsForBackgroundURLSessionCompletionHandler: (() -> Void)?
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         log.info()
+        handleEventsForBackgroundURLSessionCompletionHandler?()
     }
 }
 
