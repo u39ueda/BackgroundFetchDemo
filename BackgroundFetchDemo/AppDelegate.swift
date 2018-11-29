@@ -56,39 +56,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         decoder.dateDecodingStrategy = .formatted(formatter)
         return decoder
     }
-    var fetchDataEncoder: JSONEncoder {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        return encoder
-    }
-    var fetchDataDecoder: JSONDecoder {
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return decoder
-    }
-
-    var fetchData: FetchData? {
-        get {
-            if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
-                return try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
-            }
-            return nil
-        }
-        set {
-            let value = try? fetchDataEncoder.encode(newValue)
-            UserDefaults.standard.set(value, forKey: "fetchData")
-        }
-    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
 
         application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
         log.debug("\(launchOptions?.description ?? "(nil)")")
-        if let rawFetchData = UserDefaults.standard.object(forKey: "fetchData") as? Data {
-            let fetchData = try? fetchDataDecoder.decode(FetchData.self, from: rawFetchData)
-            log.debug("\(fetchData)")
-        }
+        log.debug("\(String(describing: UserDefaultsManager.shared.fetchData))")
 
         return true
     }
@@ -125,7 +99,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func checkFetchNeed(date: Date) -> Bool {
-        if let fetchData = self.fetchData {
+        if let fetchData = UserDefaultsManager.shared.fetchData {
             // Skip if 24h have not passed since the last fetch
             if let lastFetchDate = fetchData.lastFetchDate {
                 let diff = date.timeIntervalSince(lastFetchDate)
@@ -161,20 +135,20 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
                     fetchData.sample = sample
                     fetchData.lastModified = lastModified
                     fetchData.lastFetchDate = Date()
-                    self.fetchData = fetchData
+                    UserDefaultsManager.shared.fetchData = fetchData
                     log.debug("fetchData=\(fetchData)")
                     fetchResult = .newData
                 } else {
                     var fetchData = FetchData()
                     fetchData.lastFetchFailureDate = Date()
-                    self.fetchData = fetchData
+                    UserDefaultsManager.shared.fetchData = fetchData
                     log.debug("parse failure. fetchData=\(fetchData)")
                     fetchResult = .failed
                 }
             case let .failure(error):
                 var fetchData = FetchData()
                 fetchData.lastFetchFailureDate = Date()
-                self.fetchData = fetchData
+                UserDefaultsManager.shared.fetchData = fetchData
                 log.debug("download failure. error=\(error), fetchData=\(fetchData)")
                 fetchResult = .failed
             }

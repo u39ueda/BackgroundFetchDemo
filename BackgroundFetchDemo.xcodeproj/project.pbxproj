@@ -22,6 +22,7 @@
 		0B8473A021AEF19D000E548C /* XCGLogger.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B84739E21AEF19D000E548C /* XCGLogger.framework */; };
 		0BAD2F2A21AFF231006081DD /* LogListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAD2F2921AFF231006081DD /* LogListViewController.swift */; };
 		0BAD2F2C21AFF246006081DD /* LogDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAD2F2B21AFF246006081DD /* LogDetailViewController.swift */; };
+		0BAD2F2E21B00006006081DD /* UserDefaultsManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAD2F2D21B00006006081DD /* UserDefaultsManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -63,6 +64,7 @@
 		0B84739E21AEF19D000E548C /* XCGLogger.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCGLogger.framework; path = Carthage/Build/iOS/XCGLogger.framework; sourceTree = "<group>"; };
 		0BAD2F2921AFF231006081DD /* LogListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogListViewController.swift; sourceTree = "<group>"; };
 		0BAD2F2B21AFF246006081DD /* LogDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogDetailViewController.swift; sourceTree = "<group>"; };
+		0BAD2F2D21B00006006081DD /* UserDefaultsManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UserDefaultsManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,6 +129,7 @@
 				0B438E13219FBC1700F47890 /* Result.swift */,
 				0B438E15219FC49000F47890 /* Sample.swift */,
 				0B438E19219FC9EE00F47890 /* FetchData.swift */,
+				0BAD2F2D21B00006006081DD /* UserDefaultsManager.swift */,
 			);
 			path = BackgroundFetchDemo;
 			sourceTree = "<group>";
@@ -328,6 +331,7 @@
 				0BAD2F2C21AFF246006081DD /* LogDetailViewController.swift in Sources */,
 				0B438E1A219FC9EE00F47890 /* FetchData.swift in Sources */,
 				0BAD2F2A21AFF231006081DD /* LogListViewController.swift in Sources */,
+				0BAD2F2E21B00006006081DD /* UserDefaultsManager.swift in Sources */,
 				0B4FC1F1219FAC0700B90D3C /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
