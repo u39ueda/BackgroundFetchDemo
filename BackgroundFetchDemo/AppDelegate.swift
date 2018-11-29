@@ -46,7 +46,7 @@ let log: XCGLogger = {
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    let networkManager = BackgroundNetworkManager(configuration: URLSessionConfiguration.default)
+    let networkManager = BackgroundNetworkManager(configuration: URLSessionConfiguration.background(withIdentifier: "net.u39-ueda.BackgroundFetchDemo.background"))
     var sampleDecoder: JSONDecoder {
         let decoder = JSONDecoder()
         let formatter = DateFormatter()
@@ -98,6 +98,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         requestData(completionHandler: completionHandler)
     }
 
+    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
+        log.info("identifier=\(identifier)")
+        if identifier == networkManager.identifier {
+            networkManager.handleEventsForBackgroundURLSession(completionHandler: completionHandler)
+        } else {
+            completionHandler()
+        }
+    }
+
     func checkFetchNeed(date: Date) -> Bool {
         if let fetchData = UserDefaultsManager.shared.fetchData {
             // Skip if 24h have not passed since the last fetch
@@ -123,36 +132,43 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func requestData(completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
         let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
         let decoder = sampleDecoder
-        networkManager.get(url) { (result) in
+        networkManager.download(url) { (result) in
             log.debug("\(result)")
-            let fetchResult: UIBackgroundFetchResult
             switch result {
-            case let .success((data, res)):
-                if let sample = try? decoder.decode(Sample.self, from: data), let res = res as? HTTPURLResponse {
-                    let lastModified = res.allHeaderFields["Last-Modified"] as? String ?? ""
-                    log.debug("fetch success. \(sample), Last-Modified=\(lastModified)")
-                    var fetchData = FetchData()
-                    fetchData.sample = sample
-                    fetchData.lastModified = lastModified
-                    fetchData.lastFetchDate = Date()
-                    UserDefaultsManager.shared.fetchData = fetchData
-                    log.debug("fetchData=\(fetchData)")
-                    fetchResult = .newData
+            case let .success((tmpFileUrl, res)):
+                if let data = FileManager.default.contents(atPath: tmpFileUrl.path),
+                    let sample = try? decoder.decode(Sample.self, from: data),
+                    let res = res as? HTTPURLResponse
+                {
+                    DispatchQueue.main.async {
+                        let lastModified = res.allHeaderFields["Last-Modified"] as? String ?? ""
+                        log.debug("fetch success. \(sample), Last-Modified=\(lastModified)")
+                        var fetchData = FetchData()
+                        fetchData.sample = sample
+                        fetchData.lastModified = lastModified
+                        fetchData.lastFetchDate = Date()
+                        UserDefaultsManager.shared.fetchData = fetchData
+                        log.debug("fetchData=\(fetchData)")
+                        let fetchResult = UIBackgroundFetchResult.newData
+                        completionHandler(fetchResult)
+                    }
                 } else {
                     var fetchData = FetchData()
                     fetchData.lastFetchFailureDate = Date()
                     UserDefaultsManager.shared.fetchData = fetchData
                     log.debug("parse failure. fetchData=\(fetchData)")
-                    fetchResult = .failed
+                    let fetchResult = UIBackgroundFetchResult.failed
+                    completionHandler(fetchResult)
                 }
+                try? FileManager.default.removeItem(at: tmpFileUrl)
             case let .failure(error):
                 var fetchData = FetchData()
                 fetchData.lastFetchFailureDate = Date()
                 UserDefaultsManager.shared.fetchData = fetchData
                 log.debug("download failure. error=\(error), fetchData=\(fetchData)")
-                fetchResult = .failed
+                let fetchResult = UIBackgroundFetchResult.failed
+                completionHandler(fetchResult)
             }
-            completionHandler(fetchResult)
         }
     }
 

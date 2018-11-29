@@ -72,7 +72,7 @@ extension BackgroundDataTask {
 class BackgroundDownloadTask: Equatable, BackgroundTask {
     var task: URLSessionTask
     var completionHandler: ((Result<(URL, URLResponse)>) -> Void)?
-    var error: Error?
+    var fileError: Error?
     var response: URLResponse?
     var tempFileUrl: URL?
     init(task: URLSessionDownloadTask) {
@@ -97,9 +97,12 @@ class BackgroundDownloadTask: Equatable, BackgroundTask {
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         log.debug("error=\(String(describing: error)).")
-        self.error = error
         if let error = error {
+            cleanup()
             completionHandler?(.failure(error))
+        } else if let fileError = self.fileError {
+            cleanup()
+            completionHandler?(.failure(fileError))
         } else if let fileUrl = tempFileUrl, let response = response {
             completionHandler?(.success((fileUrl, response)))
         } else {
@@ -111,7 +114,20 @@ class BackgroundDownloadTask: Equatable, BackgroundTask {
 extension BackgroundDownloadTask {
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didFinishDownloadingTo location: URL) {
         log.debug("location=\(location), response\(String(describing: downloadTask.response)).")
-        self.tempFileUrl = location
+        let fm = FileManager.default
+        let downloadDirUrl = fm.temporaryDirectory.appendingPathComponent("download")
+        if !fm.fileExists(atPath: downloadDirUrl.path) {
+            try? fm.createDirectory(at: downloadDirUrl, withIntermediateDirectories: true, attributes: nil)
+        }
+        let tempFileUrl = downloadDirUrl.appendingPathComponent(UUID().uuidString)
+        log.debug("move downloaded file to temporary file.\nfrom=\(location)\nto=\(tempFileUrl)")
+        do {
+            try fm.moveItem(at: location, to: tempFileUrl)
+            self.tempFileUrl = tempFileUrl
+        } catch let error {
+            log.warning("move downloaded file failed. error=\(error)")
+            self.fileError = error
+        }
         self.response = downloadTask.response
     }
 }
@@ -120,7 +136,11 @@ class BackgroundNetworkManager {
     private let session: URLSession
     private let trampoline = BackgroundNetworkManagerTrampoline()
     init(configuration: URLSessionConfiguration) {
-        session = URLSession(configuration: configuration, delegate: trampoline, delegateQueue: OperationQueue.main)
+        session = URLSession(configuration: configuration, delegate: trampoline, delegateQueue: nil)
+    }
+
+    var identifier: String {
+        return session.configuration.identifier ?? ""
     }
 
     @discardableResult
@@ -146,10 +166,19 @@ class BackgroundNetworkManager {
 
         return donwloadTask
     }
+
+    func handleEventsForBackgroundURLSession(completionHandler: @escaping () -> Void) {
+        log.info()
+        completionHandler()
+    }
 }
 
 private class BackgroundNetworkManagerTrampoline: NSObject, URLSessionDelegate {
     var taskTable = [Int: BackgroundTask]()
+
+    func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
+        log.info()
+    }
 }
 
 extension BackgroundNetworkManagerTrampoline: URLSessionDataDelegate {
