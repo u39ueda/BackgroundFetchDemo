@@ -11,7 +11,24 @@ import XCGLogger
 
 let log: XCGLogger = {
     // Create a logger object with no destinations
-    let log = XCGLogger(identifier: "logger", includeDefaultDestinations: true)
+    let log = XCGLogger(identifier: "logger", includeDefaultDestinations: false)
+
+    // Create a NSLog destination
+    let sysLogDestination = AppleSystemLogDestination(owner: log, identifier: "logger.systemLog")
+    sysLogDestination.outputLevel = .debug
+    sysLogDestination.showLogIdentifier = false
+    sysLogDestination.showFunctionName = true
+    sysLogDestination.showThreadName = true
+    sysLogDestination.showLevel = true
+    sysLogDestination.showFileName = true
+    sysLogDestination.showLineNumber = true
+    sysLogDestination.showDate = true
+
+    // Process this destination in the background
+    sysLogDestination.logQueue = XCGLogger.logQueue
+
+    // Add the destination to the logger
+    log.add(destination: sysLogDestination)
 
     // Create a file log destination
     let formatter = DateFormatter()
