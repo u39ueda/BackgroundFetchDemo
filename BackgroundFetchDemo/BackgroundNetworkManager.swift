@@ -187,7 +187,14 @@ private class BackgroundNetworkManagerTrampoline: NSObject, URLSessionDelegate {
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         log.info()
-        handleEventsForBackgroundURLSessionCompletionHandler?()
+        guard let completionHandler = self.handleEventsForBackgroundURLSessionCompletionHandler else {
+            return
+        }
+        self.handleEventsForBackgroundURLSessionCompletionHandler = nil
+
+        DispatchQueue.main.async {
+            completionHandler()
+        }
     }
 }
 
