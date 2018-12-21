@@ -71,6 +71,8 @@ class BackgroundFetchUsecase {
     }
 
     func requestData(completionHandler: @escaping (BackgroundFetchUsecaseResult) -> Void) {
+        UserDefaultsManager.shared.addFetchDate(Date())
+
         let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
         let task = networkManager.download(url) { (result) in
         }

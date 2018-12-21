@@ -36,6 +36,20 @@ class UserDefaultsManager {
         }
     }
 
+    var fetchDateList: [Date] {
+        get {
+            guard let rawData = UserDefaults.standard.data(forKey: "fetchDateList") else {
+                return []
+            }
+            return (try? dataDecoder.decode([Date].self, from: rawData)) ?? []
+        }
+        set {
+            let value = try? dataEncoder.encode(newValue)
+            UserDefaults.standard.set(value, forKey: "fetchDateList")
+            UserDefaults.standard.synchronize()
+        }
+    }
+
     var downloadContentData: [String: BackgroundDownloadTask.ContentData] {
         get {
             guard let rawData = UserDefaults.standard.data(forKey: "downloadTasks") else {
@@ -58,6 +72,12 @@ class UserDefaultsManager {
 }
 
 extension UserDefaultsManager {
+    func addFetchDate(_ date: Date) {
+        var list = fetchDateList
+        list.append(date)
+        fetchDateList = list
+    }
+
     func addDownloadTask(task: BackgroundDownloadTask) {
         var tasks = self.downloadContentData
         let key = UserDefaultsManager.downloadContentKey(sessionIdentifier: task.sessionIdentifier, task: task.task)
