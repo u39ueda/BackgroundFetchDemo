@@ -9,6 +9,31 @@
 import XCTest
 @testable import BackgroundFetchDemo
 
+protocol HogeP: class {}
+class Hoge: HogeP {}
+
+struct WeakHoge: WeakReference {
+    typealias Element = HogeP
+
+    weak var value: Element?
+    init(_ value: Element) {
+        self.value = value
+    }
+}
+
+struct HogePCollection: WeakCollection {
+    typealias WeakElement = WeakHoge
+    typealias Element = HogeP
+    var weakCollection = [WeakElement]()
+    mutating func append(_ element: Element) {
+        remove(element)
+        weakCollection.append(WeakElement(element))
+    }
+    mutating func remove(_ element: Element) {
+        weakCollection.removeAll(where: { $0.value == nil || $0.value === element })
+    }
+}
+
 class BackgroundFetchDemoTests: XCTestCase {
 
     override func setUp() {
@@ -98,6 +123,48 @@ class BackgroundFetchDemoTests: XCTestCase {
         let rawData = try? encoder.encode(data)
         XCTAssertNotNil(rawData, "decode failure.")
         print("\(rawData.flatMap { String(data: $0, encoding: .utf8) } ?? "nil")")
+    }
+
+    func test_WeakCollection() {
+        let p1: HogeP = Hoge()
+        let p2: HogeP = Hoge()
+        // relase weak object
+        do {
+            var array = HogePCollection()
+            autoreleasepool {
+                let p: HogeP = Hoge()
+                array.append(p)
+                XCTAssertEqual(array.collection.count, 1)
+            }
+            XCTAssertEqual(array.collection.count, 0)
+        }
+
+        // remove object
+        do {
+            var array = HogePCollection()
+            array.append(p1)
+            array.append(p2)
+            XCTAssertEqual(array.collection.count, 2)
+
+            array.remove(p2)
+            XCTAssertEqual(array.collection.count, 1)
+        }
+
+        // forEach object
+        do {
+            var array = HogePCollection()
+            array.append(p1)
+            array.append(p2)
+            var i = 0
+            array.forEach({ (hoge) in
+                switch i {
+                case 0: XCTAssertTrue(hoge === p1)
+                case 1: XCTAssertTrue(hoge === p2)
+                default: XCTFail()
+                }
+                i += 1
+            })
+        }
     }
 
 }

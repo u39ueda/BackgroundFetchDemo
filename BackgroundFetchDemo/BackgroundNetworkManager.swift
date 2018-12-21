@@ -8,6 +8,23 @@
 
 import Foundation
 
+struct BackgroundDownloadTaskError: Error, Codable {
+    var domain: String
+    var code: Int
+    enum CodingKeys: String, CodingKey {
+        case domain
+        case code
+    }
+    init(_ error: Error) {
+        let e = error as NSError
+        self.init(domain: e.domain, code: e.code)
+    }
+    init(domain: String, code: Int) {
+        self.domain = domain
+        self.code = code
+    }
+}
+
 protocol BackgroundTask {
     var task: URLSessionTask { get }
     func cancel()
@@ -69,17 +86,31 @@ extension BackgroundDataTask {
     }
 }
 
-class BackgroundDownloadTask: Equatable, BackgroundTask {
-    var task: URLSessionTask
-    var completionHandler: ((Result<(URL, URLResponse)>) -> Void)?
-    var fileError: Error?
-    var response: URLResponse?
-    var tempFileUrl: URL?
-    init(task: URLSessionDownloadTask) {
-        self.task = task
+class BackgroundDownloadTask: Equatable, Hashable, BackgroundTask {
+    var sessionIdentifier: String
+    var _task: URLSessionTask!
+    var task: URLSessionTask { return _task }
+    var contentData: ContentData
+    var completionHandler: ((BackgroundDownloadTask, Result<(URL, URLResponse)>) -> Void)?
+    struct ContentData: Codable {
+        var fileError: BackgroundDownloadTaskError?
+        var tempFileUrl: URL?
+
+        enum CodingKeys: String, CodingKey {
+            case fileError
+            case tempFileUrl
+        }
+    }
+    var identifier: String {
+        return "\(sessionIdentifier)_\(task.taskIdentifier)"
+    }
+    init(sessionId: String, task: URLSessionDownloadTask, contentData: ContentData = ContentData()) {
+        self.sessionIdentifier = sessionId
+        self._task = task
+        self.contentData = contentData
     }
     deinit {
-        if let fileUrl = tempFileUrl {
+        if let fileUrl = contentData.tempFileUrl {
             assert(!FileManager.default.fileExists(atPath: fileUrl.path), "temporary file should be cleanup. fileUrl=\(fileUrl)")
             cleanup()
         }
@@ -88,23 +119,26 @@ class BackgroundDownloadTask: Equatable, BackgroundTask {
         task.cancel()
     }
     func cleanup() {
-        if let fileUrl = tempFileUrl, FileManager.default.fileExists(atPath: fileUrl.path) {
+        if let fileUrl = contentData.tempFileUrl, FileManager.default.fileExists(atPath: fileUrl.path) {
             try? FileManager.default.removeItem(at: fileUrl)
         }
     }
     public static func == (lhs: BackgroundDownloadTask, rhs: BackgroundDownloadTask) -> Bool {
-        return lhs.task.taskIdentifier == rhs.task.taskIdentifier
+        return lhs.identifier == rhs.identifier
+    }
+    public var hashValue: Int {
+        return identifier.hashValue
     }
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
         log.debug("error=\(String(describing: error)).")
         if let error = error {
             cleanup()
-            completionHandler?(.failure(error))
-        } else if let fileError = self.fileError {
+            completionHandler?(self, .failure(error))
+        } else if let fileError = contentData.fileError {
             cleanup()
-            completionHandler?(.failure(fileError))
-        } else if let fileUrl = tempFileUrl, let response = response {
-            completionHandler?(.success((fileUrl, response)))
+            completionHandler?(self, .failure(fileError))
+        } else if let fileUrl = contentData.tempFileUrl, let response = task.response {
+            completionHandler?(self, .success((fileUrl, response)))
         } else {
             fatalError("both error and response are nil.")
         }
@@ -123,24 +157,79 @@ extension BackgroundDownloadTask {
         log.debug("move downloaded file to temporary file.\nfrom=\(location)\nto=\(tempFileUrl)")
         do {
             try fm.moveItem(at: location, to: tempFileUrl)
-            self.tempFileUrl = tempFileUrl
+            contentData.tempFileUrl = tempFileUrl
         } catch let error {
             log.warning("move downloaded file failed. error=\(error)")
-            self.fileError = error
+            contentData.fileError = BackgroundDownloadTaskError(error)
         }
-        self.response = downloadTask.response
+    }
+}
+
+protocol BackgroundNetworkManagerDelegate: class {
+    func backgroundNetworkManager(_ manager: BackgroundNetworkManager, downloadTask: BackgroundDownloadTask, didFinish result: Result<(URL, URLResponse)>)
+}
+
+struct WeakBackgroundNetworkManagerDelegate: WeakReference {
+    typealias Element = BackgroundNetworkManagerDelegate
+
+    weak var value: Element?
+    init(_ value: Element) {
+        self.value = value
+    }
+}
+
+struct BackgroundNetworkManagerDelegateCollection: WeakCollection {
+    typealias WeakElement = WeakBackgroundNetworkManagerDelegate
+    typealias Element = BackgroundNetworkManagerDelegate
+    var weakCollection = [WeakElement]()
+    mutating func append(_ element: Element) {
+        remove(element)
+        weakCollection.append(WeakElement(element))
+    }
+    mutating func remove(_ element: Element) {
+        weakCollection.removeAll(where: { $0.value == nil || $0.value === element })
     }
 }
 
 class BackgroundNetworkManager {
     private let session: URLSession
-    private let trampoline = BackgroundNetworkManagerTrampoline()
-    init(configuration: URLSessionConfiguration) {
-        session = URLSession(configuration: configuration, delegate: trampoline, delegateQueue: nil)
-    }
+    private let trampoline: BackgroundNetworkManagerTrampoline
+    private let userDefaults: UserDefaultsManager
+    private var observers = BackgroundNetworkManagerDelegateCollection()
 
     var identifier: String {
-        return session.configuration.identifier ?? ""
+        return trampoline.identifier
+    }
+
+    static let background = BackgroundNetworkManager(configuration: backgroundConfig)
+    static var backgroundConfig: URLSessionConfiguration {
+        let config = URLSessionConfiguration.background(withIdentifier: "net.u39-ueda.BackgroundFetchDemo.background")
+        return config
+    }
+
+    init(configuration: URLSessionConfiguration,
+         userDefaults: UserDefaultsManager = UserDefaultsManager.shared)
+    {
+        trampoline = BackgroundNetworkManagerTrampoline(identifier: configuration.identifier ?? "")
+        session = URLSession(configuration: configuration, delegate: trampoline, delegateQueue: nil)
+        self.userDefaults = userDefaults
+
+        session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) in
+            log.debug("getTasks complete\ndata=\(dataTasks)\nupload=\(uploadTasks)\ndownload=\(downloadTasks)")
+            let identifier = self.identifier
+            let downloadContentData = self.userDefaults.downloadContentData
+            var newDownloadContentData = [String: BackgroundDownloadTask.ContentData]()
+            downloadTasks.forEach { (task) in
+                let key = UserDefaultsManager.downloadContentKey(sessionIdentifier: identifier, task: task)
+                if let contentData = downloadContentData[key] {
+                    let downloadTask = BackgroundDownloadTask(sessionId: identifier, task: task, contentData: contentData)
+                    self.trampoline.taskTable[task.taskIdentifier] = downloadTask
+                    newDownloadContentData[key] = contentData
+                }
+            }
+            log.debug("remove content data=\(downloadContentData.filter { newDownloadContentData[$0.key] == nil })")
+            self.userDefaults.downloadContentData = newDownloadContentData
+        }
     }
 
     @discardableResult
@@ -158,32 +247,49 @@ class BackgroundNetworkManager {
     @discardableResult
     func download(_ url: URL, completion: @escaping (Result<(URL, URLResponse)>) -> Void) -> BackgroundDownloadTask {
         let task = session.downloadTask(with: url)
-        let donwloadTask = BackgroundDownloadTask(task: task)
-        donwloadTask.completionHandler = completion
-        trampoline.taskTable[task.taskIdentifier] = donwloadTask
+        let downloadTask = BackgroundDownloadTask(sessionId: identifier, task: task)
+        downloadTask.completionHandler = { [weak self] (downloadTask, result) in
+            guard let self = self else { return }
+            completion(result)
+            self.observers.forEach { (observer) in
+                observer.backgroundNetworkManager(self, downloadTask: downloadTask, didFinish: result)
+            }
+        }
+        trampoline.taskTable[task.taskIdentifier] = downloadTask
+        userDefaults.addDownloadTask(task: downloadTask)
 
         task.resume()
 
-        return donwloadTask
+        return downloadTask
     }
 
     func handleEventsForBackgroundURLSession(completionHandler: @escaping () -> Void) {
         log.info()
         trampoline.handleEventsForBackgroundURLSessionCompletionHandler = completionHandler
+    }
 
-        session.getTasksWithCompletionHandler { (dataTasks, uploadTasks, downloadTasks) in
-            log.debug("getTasks complete\ndata=\(dataTasks)\nupload=\(uploadTasks)\ndownload=\(downloadTasks)")
-            downloadTasks.forEach { (task) in
-                let downloadTask = BackgroundDownloadTask(task: task)
-                self.trampoline.taskTable[task.taskIdentifier] = downloadTask
-            }
-        }
+    func addObserver(_ observer: BackgroundNetworkManagerDelegate) {
+        observers.append(observer)
+    }
+
+    func removeObserver(_ observer: BackgroundNetworkManagerDelegate) {
+        observers.remove(observer)
     }
 }
 
 private class BackgroundNetworkManagerTrampoline: NSObject, URLSessionDelegate {
+    let identifier: String
     var taskTable = [Int: BackgroundTask]()
     var handleEventsForBackgroundURLSessionCompletionHandler: (() -> Void)?
+
+    required init(identifier: String) {
+        self.identifier = identifier
+        super.init()
+    }
+
+    override convenience init() {
+        self.init(identifier: "")
+    }
 
     func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
         log.info()

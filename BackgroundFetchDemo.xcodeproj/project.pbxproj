@@ -18,6 +18,8 @@
 		0B4FC1FB219FAC0800B90D3C /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 0B4FC1F9219FAC0800B90D3C /* LaunchScreen.storyboard */; };
 		0B4FC206219FAC0800B90D3C /* BackgroundFetchDemoTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4FC205219FAC0800B90D3C /* BackgroundFetchDemoTests.swift */; };
 		0B4FC211219FAC0800B90D3C /* BackgroundFetchDemoUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B4FC210219FAC0800B90D3C /* BackgroundFetchDemoUITests.swift */; };
+		0B65C9EA21B28C5600FD1B30 /* WeakCollection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B65C9E921B28C5600FD1B30 /* WeakCollection.swift */; };
+		0B65C9EC21B2A16800FD1B30 /* BackgroundFetchUsecase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B65C9EB21B2A16800FD1B30 /* BackgroundFetchUsecase.swift */; };
 		0B84739F21AEF19D000E548C /* ObjcExceptionBridging.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B84739D21AEF19D000E548C /* ObjcExceptionBridging.framework */; };
 		0B8473A021AEF19D000E548C /* XCGLogger.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0B84739E21AEF19D000E548C /* XCGLogger.framework */; };
 		0BAD2F2A21AFF231006081DD /* LogListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BAD2F2921AFF231006081DD /* LogListViewController.swift */; };
@@ -60,6 +62,8 @@
 		0B4FC20C219FAC0800B90D3C /* BackgroundFetchDemoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BackgroundFetchDemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0B4FC210219FAC0800B90D3C /* BackgroundFetchDemoUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundFetchDemoUITests.swift; sourceTree = "<group>"; };
 		0B4FC212219FAC0800B90D3C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0B65C9E921B28C5600FD1B30 /* WeakCollection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeakCollection.swift; sourceTree = "<group>"; };
+		0B65C9EB21B2A16800FD1B30 /* BackgroundFetchUsecase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundFetchUsecase.swift; sourceTree = "<group>"; };
 		0B84739D21AEF19D000E548C /* ObjcExceptionBridging.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ObjcExceptionBridging.framework; path = Carthage/Build/iOS/ObjcExceptionBridging.framework; sourceTree = "<group>"; };
 		0B84739E21AEF19D000E548C /* XCGLogger.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCGLogger.framework; path = Carthage/Build/iOS/XCGLogger.framework; sourceTree = "<group>"; };
 		0BAD2F2921AFF231006081DD /* LogListViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogListViewController.swift; sourceTree = "<group>"; };
@@ -130,6 +134,8 @@
 				0B438E15219FC49000F47890 /* Sample.swift */,
 				0B438E19219FC9EE00F47890 /* FetchData.swift */,
 				0BAD2F2D21B00006006081DD /* UserDefaultsManager.swift */,
+				0B65C9E921B28C5600FD1B30 /* WeakCollection.swift */,
+				0B65C9EB21B2A16800FD1B30 /* BackgroundFetchUsecase.swift */,
 			);
 			path = BackgroundFetchDemo;
 			sourceTree = "<group>";
@@ -331,7 +337,9 @@
 				0BAD2F2C21AFF246006081DD /* LogDetailViewController.swift in Sources */,
 				0B438E1A219FC9EE00F47890 /* FetchData.swift in Sources */,
 				0BAD2F2A21AFF231006081DD /* LogListViewController.swift in Sources */,
+				0B65C9EC21B2A16800FD1B30 /* BackgroundFetchUsecase.swift in Sources */,
 				0BAD2F2E21B00006006081DD /* UserDefaultsManager.swift in Sources */,
+				0B65C9EA21B28C5600FD1B30 /* WeakCollection.swift in Sources */,
 				0B4FC1F1219FAC0700B90D3C /* AppDelegate.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

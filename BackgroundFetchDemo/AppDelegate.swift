@@ -63,19 +63,13 @@ let log: XCGLogger = {
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
-    let networkManager = BackgroundNetworkManager(configuration: URLSessionConfiguration.background(withIdentifier: "net.u39-ueda.BackgroundFetchDemo.background"))
-    var sampleDecoder: JSONDecoder {
-        let decoder = JSONDecoder()
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyyMMddHHmmss"
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 9 * 60 * 60)
-        decoder.dateDecodingStrategy = .formatted(formatter)
-        return decoder
-    }
+    let networkManager = BackgroundNetworkManager.background
+    var fetchUsecase: BackgroundFetchUsecase?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
+
+        fetchUsecase = BackgroundFetchUsecase()
 
         application.setMinimumBackgroundFetchInterval(UIApplication.backgroundFetchIntervalMinimum)
         log.debug("\(launchOptions?.description ?? "(nil)")")
@@ -107,12 +101,29 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     }
 
     func application(_ application: UIApplication, performFetchWithCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        log.debug("")
-        if !checkFetchNeed(date: Date()) {
-            completionHandler(.noData)
-            return
+        log.debug()
+        var backgroundFetchCompletionHandler = completionHandler
+
+        fetchUsecase?.fire { (result) in
+            log.info("Background fetch finish. result=\(result)")
+            let fetchResult: UIBackgroundFetchResult
+            switch result {
+            case .success: fetchResult = .newData
+            case .skip: fetchResult = .noData
+            case .failed: fetchResult = .failed
+            }
+            let completionHandler = backgroundFetchCompletionHandler
+            backgroundFetchCompletionHandler = { _ in }
+            completionHandler(fetchResult)
         }
-        requestData(completionHandler: completionHandler)
+
+        // call completionHandler if timeout
+        DispatchQueue.main.asyncAfter(deadline: .now() + 29.0) {
+            log.info("Background fetch timeout.")
+            let completionHandler = backgroundFetchCompletionHandler
+            backgroundFetchCompletionHandler = { _ in }
+            completionHandler(.newData)
+        }
     }
 
     func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String, completionHandler: @escaping () -> Void) {
@@ -124,70 +135,4 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
     }
 
-    func checkFetchNeed(date: Date) -> Bool {
-        if let fetchData = UserDefaultsManager.shared.fetchData {
-            // Skip if 24h have not passed since the last fetch
-            if let lastFetchDate = fetchData.lastFetchDate {
-                let diff = date.timeIntervalSince(lastFetchDate)
-                if 0 < diff && diff < 24 * 60 * 60 {
-                    log.debug("lastFetchDate=\(lastFetchDate), diff=\(diff)")
-                    return false
-                }
-            }
-            // Skip if 5min have not passed since the last fetch failure
-            if let lastFetchDate = fetchData.lastFetchFailureDate {
-                let diff = date.timeIntervalSince(lastFetchDate)
-                if 0 < diff && diff < 5 * 60 {
-                    log.debug("lastFetchFailureDate=\(lastFetchDate), diff=\(diff)")
-                    return false
-                }
-            }
-        }
-        return true
-    }
-
-    func requestData(completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
-        let url = URL(string: "https://firebasestorage.googleapis.com/v0/b/sandbox-3dbc9.appspot.com/o/sample%2Fsample01.json?alt=media&token=482849a6-7105-4f88-9bbb-39c32201a846")!
-        let decoder = sampleDecoder
-        networkManager.download(url) { (result) in
-            log.debug("\(result)")
-            switch result {
-            case let .success((tmpFileUrl, res)):
-                if let data = FileManager.default.contents(atPath: tmpFileUrl.path),
-                    let sample = try? decoder.decode(Sample.self, from: data),
-                    let res = res as? HTTPURLResponse
-                {
-                    DispatchQueue.main.async {
-                        let lastModified = res.allHeaderFields["Last-Modified"] as? String ?? ""
-                        log.debug("fetch success. \(sample), Last-Modified=\(lastModified)")
-                        var fetchData = FetchData()
-                        fetchData.sample = sample
-                        fetchData.lastModified = lastModified
-                        fetchData.lastFetchDate = Date()
-                        UserDefaultsManager.shared.fetchData = fetchData
-                        log.debug("fetchData=\(fetchData)")
-                        let fetchResult = UIBackgroundFetchResult.newData
-                        completionHandler(fetchResult)
-                    }
-                } else {
-                    var fetchData = FetchData()
-                    fetchData.lastFetchFailureDate = Date()
-                    UserDefaultsManager.shared.fetchData = fetchData
-                    log.debug("parse failure. fetchData=\(fetchData)")
-                    let fetchResult = UIBackgroundFetchResult.failed
-                    completionHandler(fetchResult)
-                }
-                try? FileManager.default.removeItem(at: tmpFileUrl)
-            case let .failure(error):
-                var fetchData = FetchData()
-                fetchData.lastFetchFailureDate = Date()
-                UserDefaultsManager.shared.fetchData = fetchData
-                log.debug("download failure. error=\(error), fetchData=\(fetchData)")
-                let fetchResult = UIBackgroundFetchResult.failed
-                completionHandler(fetchResult)
-            }
-        }
-    }
-
 }
-
